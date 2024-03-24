@@ -34,7 +34,7 @@ public class Drivetrain extends SubsystemBase {
 
     public final DifferentialDrive drive;
 
-    public Field2d m_field = new Field2d();
+    public Field2d m_field;
 
     // Odometry class for tracking robot pose
     private final DifferentialDriveOdometry m_odometry;
@@ -59,8 +59,8 @@ public class Drivetrain extends SubsystemBase {
         leftEncoder = leftMotor.getEncoder(); 
         rightEncoder = rightMotor.getEncoder(); 
 
-        leftEncoder.setVelocityConversionFactor(Constants.VELOCITY_CONVERSION_FACTOR); 
-        rightEncoder.setVelocityConversionFactor(Constants.VELOCITY_CONVERSION_FACTOR); 
+        // leftEncoder.setVelocityConversionFactor(Constants.VELOCITY_CONVERSION_FACTOR); 
+        // rightEncoder.setVelocityConversionFactor(Constants.VELOCITY_CONVERSION_FACTOR); 
 
         gyro = new ADXRS450_Gyro();
 
@@ -68,8 +68,8 @@ public class Drivetrain extends SubsystemBase {
         drive.setSafetyEnabled(false);; 
 
         // Sets the distance per pulse for the encoders
-        leftEncoder.setPositionConversionFactor(Constants.DISTANCE_PER_ENCODER_PULSE);
-        rightEncoder.setPositionConversionFactor(Constants.DISTANCE_PER_ENCODER_PULSE);
+        leftEncoder.setPositionConversionFactor(Constants.DISTANCE_PER_ENCODER_ROT);
+        rightEncoder.setPositionConversionFactor(Constants.DISTANCE_PER_ENCODER_ROT);
 
         resetEncoders();
         zeroHeading();
@@ -78,6 +78,10 @@ public class Drivetrain extends SubsystemBase {
     
         m_controller = new PIDController(0.025,0,0); //kp = 0.5, kd = 0.4. kp = 0.05 works great with /5 but slow. 
         m_controller.setTolerance(1);
+
+        m_field = new Field2d(); 
+
+        SmartDashboard.putData(m_field);
     }
 
     public DifferentialDriveKinematics getDriveKinematics() {
@@ -86,10 +90,9 @@ public class Drivetrain extends SubsystemBase {
     
     @Override
     public void periodic() {
-        SmartDashboard.putData("Drivetrain", drive);
         // Update the odometry in the periodic block
-        m_field.setRobotPose(getPose());
         updateOdometry();
+        m_field.setRobotPose(getPose());
         // turnAndDrive(0.1, 1);
     }
     
@@ -100,28 +103,22 @@ public class Drivetrain extends SubsystemBase {
 
     public boolean turn(double desiredAngle){ 
         double currentRobotAngle = -gyro.getAngle(); 
-        System.out.println("Gyro_angle: " + currentRobotAngle);
-    
+
         if(currentRobotAngle < desiredAngle){
-          System.out.println("first");
           m_controller.setSetpoint(desiredAngle);
-          double PIDPower = MathUtil.clamp(m_controller.calculate(currentRobotAngle),-0.1,0.1);
-          System.out.println("PID_VALUE: " + PIDPower);
+          double PIDPower = MathUtil.clamp(m_controller.calculate(currentRobotAngle),-0.2,0.2);
+
           if (m_controller.atSetpoint()){
             return true; 
           }
     
           rightMotor.set(PIDPower);
           leftMotor.set(-PIDPower);
-    
         }
     
-        if(currentRobotAngle > desiredAngle){
-          System.out.println("second");
-    
+        if(currentRobotAngle > desiredAngle){    
           m_controller.setSetpoint(desiredAngle);
-          double PIDPower = MathUtil.clamp(m_controller.calculate(currentRobotAngle),-0.1,0.1);
-          System.out.println("power:" + PIDPower); 
+          double PIDPower = MathUtil.clamp(m_controller.calculate(currentRobotAngle),-0.2,0.2);
 
           if (m_controller.atSetpoint()){
             return true; 
@@ -135,16 +132,15 @@ public class Drivetrain extends SubsystemBase {
     }
 
     public void drive_straight(double power){
-        System.out.println("I am being called");
         // Setpoint is implicitly 0, since we don't want the heading to change
         double error = -gyro.getRate();
     
         // // Drives forward continuously at half speed, using the gyro to stabilize the heading
         // rightMotor.set(power - 0.0025 * error); 
         // leftMotor.set(power + 0.0025 * error); 
+        System.out.println(leftEncoder.getPosition());
         drive.tankDrive(power + 0.005 * error, power - 0.005 * error);
-
-      }
+    }
 
     /**
      * Returns the currently-estimated pose of the robot.

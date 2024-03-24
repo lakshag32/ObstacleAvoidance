@@ -11,9 +11,6 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import frc.robot.constants.miscConstants.VisionConstants;
-import frc.robot.constants.swerve.DriveConstants;
-import frc.robot.util.LogManager;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -31,17 +28,10 @@ public class Robot extends TimedRobot {
      */
     @Override
     public void robotInit() {
-        // To Set the Robot Identity
-        //   SimGUI: Persistent Values, Preferences, RobotId, then restart Simulation
-        //     changes networktables.json, networktables.json.bck (both Untracked)
-        //   Uncomment the next line, set the desired RobotId, deploy, and then comment the line out
-        //RobotId.setRobotId(RobotId.Vertigo);
-        DriveConstants.update(RobotId.getRobotId());
-        // obtain this robot's identity
-        RobotId robotId = RobotId.getRobotId();
+
 
         // build the RobotContainer with the robot id from preferences
-        robotContainer = new RobotContainer(robotId);
+        robotContainer = new RobotContainer();
     }
 
     /**
@@ -58,8 +48,6 @@ public class Robot extends TimedRobot {
         // and running subsystem periodic() methods.  This must be called from the robot's periodic
         // block in order for anything in the Command-based framework to work.
         CommandScheduler.getInstance().run();
-        
-        LogManager.update();
     }
 
     /**

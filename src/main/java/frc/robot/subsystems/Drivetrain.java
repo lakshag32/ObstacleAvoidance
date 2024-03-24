@@ -98,7 +98,7 @@ public class Drivetrain extends SubsystemBase {
         m_odometry.update(gyro.getRotation2d(), leftEncoder.getPosition(), rightEncoder.getPosition());
     }
 
-    public void turnAndDrive(double drivePower, double desiredAngle){ 
+    public boolean turn(double desiredAngle){ 
         double currentRobotAngle = -gyro.getAngle(); 
         System.out.println("Gyro_angle: " + currentRobotAngle);
     
@@ -108,8 +108,7 @@ public class Drivetrain extends SubsystemBase {
           double PIDPower = MathUtil.clamp(m_controller.calculate(currentRobotAngle),-0.1,0.1);
           System.out.println("PID_VALUE: " + PIDPower);
           if (m_controller.atSetpoint()){
-            PIDPower = 0;  
-            // drive_straight(0.1); 
+            return true; 
           }
     
           rightMotor.set(PIDPower);
@@ -125,21 +124,26 @@ public class Drivetrain extends SubsystemBase {
           System.out.println("power:" + PIDPower); 
 
           if (m_controller.atSetpoint()){
-            PIDPower = 0;
-            // drive_straight(0.1);
+            return true; 
           }
     
           rightMotor.set(PIDPower);
           leftMotor.set(-PIDPower);
-        }    
+        }
+
+        return false; 
     }
 
     public void drive_straight(double power){
+        System.out.println("I am being called");
         // Setpoint is implicitly 0, since we don't want the heading to change
         double error = -gyro.getRate();
     
-        // Drives forward continuously at half speed, using the gyro to stabilize the heading
+        // // Drives forward continuously at half speed, using the gyro to stabilize the heading
+        // rightMotor.set(power - 0.0025 * error); 
+        // leftMotor.set(power + 0.0025 * error); 
         drive.tankDrive(power + 0.005 * error, power - 0.005 * error);
+
       }
 
     /**

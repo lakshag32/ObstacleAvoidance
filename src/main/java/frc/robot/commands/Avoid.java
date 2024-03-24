@@ -17,8 +17,11 @@ public class Avoid extends Command {
     }
     @Override
     public void execute() {
-        drive.turnAndDrive(0.3, -10);
-        // drive.drive(0.1, 10.0);
+        if(drive.turn(5)){
+            drive.drive_straight(0.3);
+        }
+        // // drive.drive(0.1, 10.0);
+        // drive.drive_straight(0.1);
     }
 
     @Override

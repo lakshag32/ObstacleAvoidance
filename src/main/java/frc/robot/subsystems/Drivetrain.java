@@ -10,14 +10,19 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.constants.Constants;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.util.ReplanningConfig;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
+import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -70,7 +75,9 @@ public class Drivetrain extends SubsystemBase {
         // Sets the distance per pulse for the encoders
         leftEncoder.setPositionConversionFactor(Constants.DISTANCE_PER_ENCODER_ROT);
         rightEncoder.setPositionConversionFactor(Constants.DISTANCE_PER_ENCODER_ROT);
-
+        leftEncoder.setVelocityConversionFactor(Constants.VELOCITY_CONVERSION_FACTOR);
+        rightEncoder.setVelocityConversionFactor(Constants.VELOCITY_CONVERSION_FACTOR); 
+        
         resetEncoders();
         zeroHeading();
 
@@ -82,7 +89,34 @@ public class Drivetrain extends SubsystemBase {
         m_field = new Field2d(); 
 
         SmartDashboard.putData(m_field);
+
+        AutoBuilder.configureRamsete(
+            this::getPose, // Robot pose supplier
+            this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
+            this::getCurrentSpeeds, // Current ChassisSpeeds supplier
+            this::drive, // Method that will drive the robot given ChassisSpeeds
+            new ReplanningConfig(), // Default path replanning config. See the API for the options here
+            () -> {
+            // Boolean supplier that controls when the path will be mirrored for the red alliance
+            // This will flip the path being followed to the red side of the field.
+            // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+
+            var alliance = DriverStation.getAlliance();
+            if (alliance.isPresent()) {
+                return alliance.get() == DriverStation.Alliance.Red;
+            }
+            return false;
+            },
+            this // Reference to this subsystem to set requirements
+        );
+
     }
+
+    //https://www.youtube.com/watch?v=gRbBkdinq0o
+    public ChassisSpeeds getCurrentSpeeds(){
+       return m_driveKinematics.toChassisSpeeds(new DifferentialDriveWheelSpeeds(leftEncoder.getVelocity(),rightEncoder.getVelocity()));
+    }
+    
 
     public DifferentialDriveKinematics getDriveKinematics() {
         return m_driveKinematics;
@@ -100,6 +134,24 @@ public class Drivetrain extends SubsystemBase {
     public void updateOdometry() {
         m_odometry.update(gyro.getRotation2d(), leftEncoder.getPosition(), rightEncoder.getPosition());
     }
+
+    public void drive(ChassisSpeeds speeds){
+        var wheelSpeeds = m_driveKinematics.toWheelSpeeds(speeds);
+        setSpeeds(wheelSpeeds);
+    }
+
+    public void setSpeeds(DifferentialDriveWheelSpeeds speeds) {
+
+        final double leftOutput =
+            m_controller.calculate(leftEncoder.getVelocity(), speeds.leftMetersPerSecond);
+    
+        final double rightOutput =
+            m_controller.calculate(rightEncoder.getVelocity(), speeds.rightMetersPerSecond);
+        
+        leftMotor.setVoltage(leftOutput);
+        rightMotor.setVoltage(rightOutput);
+      }
+    
 
     public boolean turn(double desiredAngle){ 
         double currentRobotAngle = -gyro.getAngle(); 
@@ -149,6 +201,11 @@ public class Drivetrain extends SubsystemBase {
      */
     public Pose2d getPose() {
         return m_odometry.getPoseMeters();
+    }
+
+    public void resetPose(Pose2d pose){
+        resetEncoders();
+        m_odometry.resetPosition(gyro.getRotation2d(),leftEncoder.getPosition(),rightEncoder.getPosition(), pose);
     }
 
     /**

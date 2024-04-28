@@ -40,6 +40,7 @@ public class Avoid extends Command {
 
         double poseX = m_drive.getEstimatedX();
         double poseY = -m_drive.getEstimatedY();
+        
         System.out.println("poseX: " + poseX); 
         System.out.println("poseY: " + poseY); 
         
@@ -50,7 +51,7 @@ public class Avoid extends Command {
         xPub.set(poseX);
         yPub.set(poseY);
 
-        if(m_drive.turn(10)){
+        if(m_drive.turn(angle)){
             m_drive.drive_straight(0.3);
         }
 
